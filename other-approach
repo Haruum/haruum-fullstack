@@ -1,0 +1,48 @@
+
+# # The following stage build the environment used for the final application to run. 
+# # It uses the slim image which is equipped with all necessary packages to run Python. 
+# # This stage focuses on installing all the application dependencies (requirements.txt) and gunicorn
+# # which will be used to run the wsgi server for the application.
+# # 
+# # The installation of these dependencies is not done directly using the alpine image as according to the 
+# # Dockerhub documentation and testing, there are issues with the installation of python packages
+# # (as it uses libc and not glibc and that an additional build-base package need to be added).
+# #
+# # The experiment done while creating the Docker image also suggests that due to the installation of
+# # build-base package (which requires an initial update) resulted in a bigger image size, despite
+# # the dependencies being removed afterwards.
+# FROM python:3.8.10-slim
+
+# # Copy the requirements.txt file to the container to be installed.
+# COPY ./haruum-customer/requirements.txt ./requirements.txt
+
+# # Setup virtual environment to store all installed dependencies
+# # and activate virtual environment and install requirement files
+# RUN python -m venv venv \
+#     && /venv/bin/python -m pip install -r requirements.txt \
+#     && /venv/bin/python -m pip install gunicorn
+
+
+# # This stage is used to run the application. As it no longer requires 
+# # installation of packages, the alpine image is used, which is based on the
+# # linux alpine image, that contains only the necessaary packages to run the application
+# # for instance, it no longer contains bash or git (according to Python Dockerhub documentation).
+# # The stage utilizes the virtual environment setup on the previous stage.
+# FROM python:3.8.10-alpine
+
+# # Set the working directory to customer-app
+# WORKDIR /customer-app
+
+# # Copy the virtual environment folder created in the previous stage which already contains
+# # all dependencies required to run the application.
+# COPY --from=0 /venv ./venv
+
+# # Copy the project folder inside the container
+# COPY ./haruum-customer .
+
+# # Expose customer application serving port
+# EXPOSE 80
+
+# # Start the Gunicorn WSGI server by referring to the python used in the virtual environment (venv)
+# # (executed on top of the existing python). 
+# ENTRYPOINT ["./venv/bin/python", "-m", "gunicorn", "haruum_customer.wsgi", "--bind", "0.0.0.0:80"]

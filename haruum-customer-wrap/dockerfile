@@ -1,0 +1,23 @@
+# Use Python slim image to only include the necessary package
+# to install the application dependencies along with running the application.
+# The alpine version of Python is not used as it does not support the 
+# glibc package (as it uses libc) which is required for installing the dependencies 
+# and running queries in the Django application (and thus can not be removed after installation stage).
+FROM python:3.8.10-slim
+
+# Set the working directory to customer-app for future instructions
+WORKDIR /customer-app
+
+# Copy the project folder inside the container
+COPY ./haruum-customer .
+
+# Install all application requirements along with gunicorn which is 
+# the Python WSGI HTTP server used to run the application.
+RUN pip install -r requirements.txt \
+    && pip install gunicorn
+
+# Expose customer application serving port
+EXPOSE 80
+
+# Start the Gunicorn WSGI server to listen to port 80
+ENTRYPOINT ["gunicorn", "haruum_customer.wsgi", "--bind", "0.0.0.0:80"]
